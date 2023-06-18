@@ -1,0 +1,6 @@
+<input
+                        className="w-10 m-5 text-black"
+                        type="number"
+                        value={parseInt(counter[product.id]) || 1}
+                        onChange={(event) => handleChange(event, product.id)}
+                      />

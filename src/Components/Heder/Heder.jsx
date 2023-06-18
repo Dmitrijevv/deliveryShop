@@ -1,10 +1,8 @@
-import React, { useContext } from 'react'
 import { Link } from 'react-router-dom'
-import { CartContext } from '../../Pages/ShopPage/CartContext';
+import { useSelector } from 'react-redux';
 
 const Heder = () => {
-    const { cartItems } = useContext(CartContext);
-    console.log(cartItems)
+  const cartLength = useSelector((store) => store.cart)
 
   return (
     <div className='flex pt-3'>
@@ -12,7 +10,10 @@ const Heder = () => {
             <Link to='/'>Shops</Link>
         </div>
         <div className='ml-3'>
-        <Link to='/cart'>Shopping cart ({cartItems.length})</Link>
+        <Link to='/cart'>Shopping cart ({cartLength.length})</Link>
+        </div>
+        <div className='ml-3'>
+        <Link to='/pay'>Pay now</Link>
         </div>
     </div>
   )

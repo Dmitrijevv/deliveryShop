@@ -1,8 +1,11 @@
-import React, { useContext, useState } from "react";
-import { CartContext } from "../CartContext";
+import React, { useState, useCallback, useMemo } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { removeFromCart } from "../../../store/slice/cartSlice";
+import { addForm } from "../../../store/slice/formSlice";
 
 const ShoppingCartPage = () => {
-  const { cartItems, setCartItems } = useContext(CartContext);
+  const dispatch = useDispatch();
+  const cartsItem = useSelector((store) => store.cart);
   const [counter, setCounter] = useState({});
   const [formData, setFormData] = useState({
     firstName: "",
@@ -12,40 +15,44 @@ const ShoppingCartPage = () => {
     address: "",
   });
 
-  const handleChange = (event, productId) => {
+  const handleChange = useCallback((event, productId) => {
     const { value } = event.target;
     setCounter((prevCount) => ({ ...prevCount, [productId]: value }));
-  };
+  }, []);
 
-  const handleIncrement = (productId) => {
-    setCounter((prevCount) => ({
-      ...prevCount,
-      [productId]: (prevCount[productId] || 0) + 1,
-    }));
-  };
+  const handleIncrement = useCallback((productId) => {
+    setCounter((prevCount) => {
+      const updatedCount = { ...prevCount };
+      updatedCount[productId] = (updatedCount[productId] || 0) + 1;
+      return updatedCount;
+    });
+  }, []);
 
-  const handleDecrement = (productId) => {
+  const handleDecrement = useCallback((productId) => {
     setCounter((prevCount) => ({
       ...prevCount,
       [productId]: Math.max((prevCount[productId] || 0) - 1, 0),
     }));
-  };
+  }, []);
 
-  const handleRemove = (productId) => {
-    setCounter((prevCount) => {
-      const updatedCount = { ...prevCount };
-      delete updatedCount[productId];
-      return updatedCount;
-    });
-    setCartItems((prevItems) =>
-      prevItems.filter((item) => item.id !== productId)
-    );
-  };
+  const handleRemove = useCallback(
+    (productId) => {
+      setCounter((prevCount) => {
+        const updatedCount = { ...prevCount };
+        delete updatedCount[productId];
+        return updatedCount;
+      });
+      dispatch(removeFromCart(productId));
+    },
+    [dispatch]
+  );
 
-  const totalPrice = cartItems.reduce((total, product) => {
-    const quantity = counter[product.id] || 1;
-    return total + product.price * quantity;
-  }, 0);
+  const totalPrice = useMemo(() => {
+    return cartsItem.reduce((total, product) => {
+      const quantity = counter[product.id] || 1;
+      return total + product.price * quantity;
+    }, 0);
+  }, [cartsItem, counter]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -53,13 +60,13 @@ const ShoppingCartPage = () => {
     // Prepare the order data
     const orderData = {
       formData,
-      cartItems: cartItems.map((product) => ({
+      cartItems: cartsItem.map((product) => ({
         id: product.id,
         name: product.nameProduct,
         quantity: counter[product.id] || 1,
       })),
     };
-
+    dispatch(addForm(orderData.formData));
     // Perform the necessary actions with the order data
     // For example, send it to the server or save it to localStorage
 
@@ -71,10 +78,6 @@ const ShoppingCartPage = () => {
       phone: "",
       address: "",
     });
-    setCartItems([]);
-
-    // Show a success message or redirect to a confirmation page
-    console.log("Order submitted:", orderData);
   };
 
   return (
@@ -83,7 +86,7 @@ const ShoppingCartPage = () => {
         <h1 className="text-4xl">Form order</h1>
         <form onSubmit={handleSubmit}>
           <div className="mb-4 mt-10">
-            <label htmlFor="firstName" className="block text-gray-300">
+            <label htmlFor="firstName" className="block text-gray-400">
               First Name:
             </label>
             <input
@@ -98,7 +101,7 @@ const ShoppingCartPage = () => {
             />
           </div>
           <div className="mb-4">
-            <label htmlFor="lastName" className="block text-gray-300">
+            <label htmlFor="lastName" className="block text-gray-400">
               Last Name:
             </label>
             <input
@@ -113,7 +116,7 @@ const ShoppingCartPage = () => {
             />
           </div>
           <div className="mb-4">
-            <label htmlFor="email" className="block text-gray-300">
+            <label htmlFor="email" className="block text-gray-400">
               Email:
             </label>
             <input
@@ -128,7 +131,7 @@ const ShoppingCartPage = () => {
             />
           </div>
           <div className="mb-4">
-            <label htmlFor="phone" className="block text-gray-300">
+            <label htmlFor="phone" className="block text-gray-400">
               Phone:
             </label>
             <input
@@ -143,7 +146,7 @@ const ShoppingCartPage = () => {
             />
           </div>
           <div className="mb-4">
-            <label htmlFor="address" className="block text-gray-300">
+            <label htmlFor="address" className="block text-gray-400">
               Address:
             </label>
             <textarea
@@ -166,13 +169,13 @@ const ShoppingCartPage = () => {
       </div>
       <div className="sm:w-auto md:w-1/2 overflow-scroll">
         <div>
-          {cartItems.length > 0 ? (
+          {cartsItem.length > 0 ? (
             <div className=" sm:block mt-10 md:flex flex-wrap ">
-              {cartItems.map((product) => (
+              {cartsItem.map((product) => (
                 <div className="sm:w-auto mb-10 md:w-60 m-1" key={product.id}>
                   <img
                     className="sm:w-auto md:w-56 hover:scale-125 skew-y-3"
-                    src={product.imageUrl}
+                    src={product.image}
                     alt={product.nameProduct}
                   />
                   <div className="sm:w-auto h-auto md:h-44">
@@ -185,28 +188,27 @@ const ShoppingCartPage = () => {
                     <div className="flex justify-center">
                       <button
                         onClick={() => handleDecrement(product.id)}
-                        className="text-2xl"
+                        className="text-2xl cursor-pointer"
                       >
                         -
                       </button>
+                      
                       <input
                         className="w-10 m-5 text-black"
                         type="number"
-                        value={counter[product.id] || "1"}
-                        onChange={(event) =>
-                          handleChange(event, product.id)
-                        }
+                        value={parseInt(counter[product.id]) || 1}
+                        onChange={(event) => handleChange(event, product.id)}
                       />
                       <button
                         onClick={() => handleIncrement(product.id)}
-                        className="text-2xl"
+                        className="text-2xl cursor-pointer"
                       >
                         +
                       </button>
                     </div>
                     <button
                       onClick={() => handleRemove(product.id)}
-                      className="text-red-500"
+                      className="text-red-500 cursor-pointer"
                     >
                       Remove
                     </button>
